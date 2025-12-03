@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dmlkappa"
-version = "0.0.1"
-description = "Diagnostics for DML condition number kappa_DML and PLR simulations"
+version = "0.1.0"
+description = "Finite-Sample Conditioning Diagnostics for Double Machine Learning"
 authors = [ { name = "Gabriel Saco" } ]
 license = { text = "MIT" }
 readme = "README.md"
@@ -14,8 +14,12 @@ dependencies = [
   "numpy>=1.21",
   "pandas>=1.3",
   "scikit-learn>=1.0",
+  "scipy>=1.7",
   "matplotlib>=3.3",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=6.0","black"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

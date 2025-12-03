@@ -1,20 +1,42 @@
 """Basic example for dmlkappa.
 
-Simulate a PLR dataset, fit DML-PLR, and print diagnostics.
+Simulate a PLR dataset, fit DML-PLR with κ_DML diagnostics.
+
+This example demonstrates the main API of the dmlkappa package.
 """
-from dmlkappa import compute_kappa_from_u
-from dmlkappa.diagnostics import diagnostic_report
-from dmlkappa.simulation import simulate_plr_once, fit_dml_plr
+from sklearn.ensemble import RandomForestRegressor
+
+from dmlkappa import simulate_plr, DMLKappaPLR
 
 
 def main():
-    n = 500
-    overlap = "moderate"
-    rho = 0.5
-    Y, D, X = simulate_plr_once(n=n, overlap=overlap, rho=rho, random_state=123)
-    out = fit_dml_plr(Y, D, X, n_folds=5, random_state=123)
-    kappa = out["kappa"]
-    print(diagnostic_report(kappa, n))
+    # 1. Simulate PLR data with moderate overlap
+    print("Simulating PLR data...")
+    X, D, Y, info = simulate_plr(
+        n=500,
+        p=10,
+        rho=0.5,
+        overlap="moderate",
+        theta0=1.0,
+        random_state=123
+    )
+    print(f"  True θ₀ = {info['theta0']}")
+    print(f"  Overlap = {info['overlap']}")
+    print()
+
+    # 2. Fit DML-PLR with Random Forest learners
+    print("Fitting DML-PLR estimator...")
+    model = DMLKappaPLR(
+        learner_m=RandomForestRegressor(n_estimators=100, min_samples_leaf=5, random_state=123),
+        learner_g=RandomForestRegressor(n_estimators=100, min_samples_leaf=5, random_state=123),
+        n_splits=5,
+        random_state=123
+    )
+    model.fit(X, D, Y)
+    print()
+
+    # 3. Print summary with κ_DML diagnostics
+    print(model.summary())
 
 
 if __name__ == "__main__":

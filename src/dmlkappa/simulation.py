@@ -19,6 +19,86 @@ def _toeplitz_cov(p: int, rho: float) -> np.ndarray:
     return rho ** np.abs(np.subtract.outer(idx, idx))
 
 
+def simulate_plr(
+    n: int,
+    p: int = 10,
+    rho: float = 0.5,
+    overlap: str = "moderate",
+    theta0: float = 1.0,
+    random_state: Optional[int] = None,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, Dict[str, Any]]:
+    """Simulate data from a Partially Linear Regression model.
+
+    Generates data according to:
+        Y = D θ₀ + g₀(X) + ε
+        D = X^T β_D + U
+        X ~ N(0, Σ)  with Toeplitz Σ_{jk} = ρ^{|j-k|}
+
+    The overlap level controls σ_U (residual treatment variance):
+        - 'high':     σ_U = 2.0  → strong overlap, low κ_DML
+        - 'moderate': σ_U = 1.0  → moderate overlap
+        - 'low':      σ_U = 0.3  → weak overlap, high κ_DML
+
+    Parameters
+    ----------
+    n : int
+        Sample size.
+    p : int, default=10
+        Number of covariates.
+    rho : float, default=0.5
+        Toeplitz correlation parameter for X.
+    overlap : str, default="moderate"
+        Overlap level: "high", "moderate", or "low".
+    theta0 : float, default=1.0
+        True treatment effect.
+    random_state : int or None, default=None
+        Random seed.
+
+    Returns
+    -------
+    X : np.ndarray of shape (n, p)
+        Covariate matrix.
+    D : np.ndarray of shape (n,)
+        Treatment variable.
+    Y : np.ndarray of shape (n,)
+        Outcome variable.
+    info : dict
+        Dictionary with DGP parameters: theta0, rho, overlap, sigma_u, p.
+    """
+    rs = np.random.RandomState(random_state)
+    Sigma = _toeplitz_cov(p, rho)
+    X = rs.multivariate_normal(mean=np.zeros(p), cov=Sigma, size=n)
+
+    # Coefficients for treatment model
+    beta_D = np.ones(p) * 0.5 / p
+
+    # Overlap mapping
+    overlap_map = {"high": 2.0, "moderate": 1.0, "low": 0.3}
+    if overlap not in overlap_map:
+        raise ValueError(f"overlap must be one of {list(overlap_map.keys())}")
+    sigma_u = overlap_map[overlap]
+
+    # Generate treatment
+    U = rs.normal(scale=sigma_u, size=n)
+    D = X.dot(beta_D) + U
+
+    # Outcome model: g_0(X) = γ^T sin(X)
+    gamma = rs.normal(scale=0.5, size=p)
+    g0 = np.sin(X).dot(gamma)
+    eps = rs.normal(scale=1.0, size=n)
+    Y = D * theta0 + g0 + eps
+
+    info = {
+        "theta0": theta0,
+        "rho": rho,
+        "overlap": overlap,
+        "sigma_u": sigma_u,
+        "p": p,
+    }
+
+    return X, D, Y, info
+
+
 def simulate_plr_once(n: int, overlap: str, rho: float, random_state: Optional[int] = None) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Simulate one PLR dataset.
 
